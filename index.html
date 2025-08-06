@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý phòng trọ</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .section { display: none; margin-top: 20px; }
+    .visible { display: block; }
+    label { display: inline-block; width: 150px; margin: 5px 0; }
+    input, select { width: 200px; margin-bottom: 5px; }
+    .menu button { margin-right: 10px; margin-bottom: 10px; }
+    table { border-collapse: collapse; width: 400px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <h2>Quản lý Phòng Trọ</h2>
+  <div class="menu">
+    <button onclick="showSection('room')">1. Thêm / Sửa / Xóa phòng</button>
+    <button onclick="showSection('electric')">2. Ghi điện</button>
+    <button onclick="showSection('bill')">3. In phiếu điện</button>
+  </div>
+
+  <!-- PHẦN 1: THÊM / SỬA / XÓA PHÒNG -->
+  <div id="room" class="section">
+    <h3>Thêm Phòng</h3>
+    <label>Mã phòng:</label><input id="roomId" /><br>
+    <label>Tiền phòng:</label><input id="roomRent" /><br>
+    <label>Tiền xe:</label><input id="bikeFee" /><br>
+    <label>Tiền nước:</label><input id="waterFee" /><br>
+    <label>Phí giặt:</label><input id="laundryFee" /><br>
+    <label>Phí dịch vụ:</label><input id="serviceFee" /><br>
+    <label>Tủ lạnh:</label><input id="fridgeFee" /><br>
+    <label>Giá điện/kWh:</label><input id="electricRate" /><br>
+    <label>Chi phí khác:</label><input id="otherFee" /><br>
+    <button onclick="addRoom()">Thêm Phòng</button>
+
+    <h3>Sửa Phòng</h3>
+    <select id="editRoom" onchange="fillEditFields()"></select><br>
+    <label>Tiền phòng:</label><input id="editRent" /><br>
+    <label>Tiền xe:</label><input id="editBike" /><br>
+    <label>Tiền nước:</label><input id="editWater" /><br>
+    <label>Phí giặt:</label><input id="editLaundry" /><br>
+    <label>Phí dịch vụ:</label><input id="editService" /><br>
+    <label>Tủ lạnh:</label><input id="editFridge" /><br>
+    <label>Giá điện/kWh:</label><input id="editElectricRate" /><br>
+    <label>Chi phí khác:</label><input id="editOther" /><br>
+    <button onclick="updateRoom()">Cập nhật</button>
+
+    <h3>Xóa Phòng</h3>
+    <select id="deleteRoom"></select><br>
+    <button onclick="deleteRoom()">Xóa phòng</button>
+  </div>
+
+  <!-- PHẦN 2: GHI SỐ ĐIỆN -->
+  <div id="electric" class="section">
+    <h3>Ghi số điện</h3>
+    <label>Chọn mã phòng:</label>
+    <select id="elecRoomSelect" onchange="renderElectricMonths()"></select><br><br>
+    <table>
+      <thead>
+        <tr>
+          <th>Tháng</th>
+          <th>Số điện</th>
+        </tr>
+      </thead>
+      <tbody id="electricMonths"></tbody>
+    </table><br>
+    <button onclick="saveElectric()">Lưu số điện</button>
+  </div>
+
+  <!-- PHẦN 3: IN PHIẾU -->
+  <div id="bill" class="section">
+    <h3>In phiếu tiền phòng</h3>
+    <label>Chọn mã phòng:</label>
+    <select id="billRoomSelect"></select><br>
+    <label>Tháng in phiếu (1–12):</label>
+    <input id="billMonth" /><br>
+    <button onclick="generateBill()">In phiếu</button>
+    <div id="billOutput" style="margin-top:20px;"></div>
+  </div>
+
+  <script>
+    const rooms = {};
+    const electricData = {};
+
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('visible'));
+      document.getElementById(id).classList.add('visible');
+      if (id === 'room') refreshRoomSelects();
+      if (id === 'electric') populateRoomDropdown('elecRoomSelect');
+      if (id === 'bill') populateRoomDropdown('billRoomSelect');
+    }
+
+    function addRoom() {
+      const id = document.getElementById('roomId').value.trim();
+      if (!id) return alert("Nhập mã phòng");
+      rooms[id] = {
+        rent: +document.getElementById('roomRent').value || 0,
+        bike: +document.getElementById('bikeFee').value || 0,
+        water: +document.getElementById('waterFee').value || 0,
+        laundry: +document.getElementById('laundryFee').value || 0,
+        service: +document.getElementById('serviceFee').value || 0,
+        fridge: +document.getElementById('fridgeFee').value || 0,
+        electricRate: +document.getElementById('electricRate').value || 0,
+        other: +document.getElementById('otherFee').value || 0
+      };
+      alert("Đã thêm phòng " + id);
+      refreshRoomSelects();
+    }
+
+    function refreshRoomSelects() {
+      ['editRoom', 'deleteRoom'].forEach(selectId => {
+        const sel = document.getElementById(selectId);
+        sel.innerHTML = Object.keys(rooms).map(r => `<option>${r}</option>`).join('');
+      });
+    }
+
+    function fillEditFields() {
+      const id = document.getElementById('editRoom').value;
+      const r = rooms[id];
+      if (!r) return;
+      document.getElementById('editRent').value = r.rent;
+      document.getElementById('editBike').value = r.bike;
+      document.getElementById('editWater').value = r.water;
+      document.getElementById('editLaundry').value = r.laundry;
+      document.getElementById('editService').value = r.service;
+      document.getElementById('editFridge').value = r.fridge;
+      document.getElementById('editElectricRate').value = r.electricRate;
+      document.getElementById('editOther').value = r.other;
+    }
+
+    function updateRoom() {
+      const id = document.getElementById('editRoom').value;
+      rooms[id] = {
+        rent: +document.getElementById('editRent').value || 0,
+        bike: +document.getElementById('editBike').value || 0,
+        water: +document.getElementById('editWater').value || 0,
+        laundry: +document.getElementById('editLaundry').value || 0,
+        service: +document.getElementById('editService').value || 0,
+        fridge: +document.getElementById('editFridge').value || 0,
+        electricRate: +document.getElementById('editElectricRate').value || 0,
+        other: +document.getElementById('editOther').value || 0
+      };
+      alert("Đã cập nhật phòng " + id);
+    }
+
+    function deleteRoom() {
+      const id = document.getElementById('deleteRoom').value;
+      delete rooms[id];
+      delete electricData[id];
+      refreshRoomSelects();
+      alert("Đã xóa phòng " + id);
+    }
+
+    function populateRoomDropdown(id) {
+      const sel = document.getElementById(id);
+      sel.innerHTML = Object.keys(rooms).map(r => `<option>${r}</option>`).join('');
+    }
+
+    function renderElectricMonths() {
+      const id = document.getElementById('elecRoomSelect').value;
+      let html = '';
+      for (let i = 1; i <= 12; i++) {
+        const oldVal = (electricData[id]?.[i] ?? '');
+        html += `<tr>
+          <td>Tháng ${i}</td>
+          <td><input id="elec_${i}" value="${oldVal}" /></td>
+        </tr>`;
+      }
+      document.getElementById('electricMonths').innerHTML = html;
+    }
+
+    function saveElectric() {
+      const id = document.getElementById('elecRoomSelect').value;
+      electricData[id] = {};
+      for (let i = 1; i <= 12; i++) {
+        electricData[id][i] = +document.getElementById(`elec_${i}`).value || 0;
+      }
+      alert("Đã lưu số điện cho phòng " + id);
+    }
+
+    function generateBill() {
+      const id = document.getElementById('billRoomSelect').value;
+      const month = +document.getElementById('billMonth').value;
+      if (!rooms[id] || !electricData[id]) return alert("Chưa đủ dữ liệu");
+      const data = rooms[id];
+      const elecOld = electricData[id][month - 1] || 0;
+      const elecNew = electricData[id][month] || 0;
+      const elecUsed = elecNew - elecOld;
+      const elecCost = elecUsed * data.electricRate;
+
+      const total = data.rent + data.bike + data.water + data.laundry + data.service + data.fridge + data.other + elecCost;
+      const toVND = v => v.toLocaleString('vi-VN', {style: 'currency', currency: 'VND'});
+
+      const output = `
+        <h2 style="margin-bottom: 10px;">Phiếu tiền phòng trọ - Tháng ${month}</h2>
+        <h3 style="font-size: 20px;"><strong>Mã phòng: ${id}</strong></h3>
+        <p>Tiền phòng: ${toVND(data.rent)}</p>
+        <p>Tiền xe: ${toVND(data.bike)}</p>
+        <p>Tiền nước: ${toVND(data.water)}</p>
+        <p>Phí giặt: ${toVND(data.laundry)}</p>
+        <p>Phí dịch vụ: ${toVND(data.service)}</p>
+        <p>Tủ lạnh: ${toVND(data.fridge)}</p>
+        <p>Chi phí khác: ${toVND(data.other)}</p>
+        <p>Số điện cũ (tháng ${month - 1}): ${elecOld} kWh</p>
+        <p>Số điện mới (tháng ${month}): ${elecNew} kWh</p>
+        <p>Sử dụng: ${elecUsed} kWh (x ${toVND(data.electricRate)} mỗi kWh)</p>
+        <p>Tiền điện: ${toVND(elecCost)}</p>
+        <hr>
+        <h2 style="font-size: 24px; font-weight: bold;">Tổng tiền thanh toán: ${toVND(total)}</h2>
+      `;
+      document.getElementById('billOutput').innerHTML = output;
+    }
+  </script>
+</body>
+</html>
